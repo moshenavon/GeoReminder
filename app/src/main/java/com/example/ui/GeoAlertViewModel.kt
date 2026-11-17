@@ -7,10 +7,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.data.AppPreferences
 import com.example.data.GeoAlertDatabase
 import com.example.data.GeoAlertRepository
 import com.example.data.GeoEventLogEntity
 import com.example.data.GeoZoneEntity
+import com.example.data.LocationMode
 import com.example.data.RingtonePreset
 import com.example.data.ZoneOccupancyState
 import com.example.geofence.GeofenceManager
@@ -55,6 +57,12 @@ class GeoAlertViewModel(
     )
     val radarState: StateFlow<RadarUiState> = _radarState.asStateFlow()
 
+    private val _locationMode = MutableStateFlow(AppPreferences.getLocationMode(application))
+    val locationMode: StateFlow<LocationMode> = _locationMode.asStateFlow()
+
+    private val _onboardingDone = MutableStateFlow(AppPreferences.isOnboardingDone(application))
+    val onboardingDone: StateFlow<Boolean> = _onboardingDone.asStateFlow()
+
     val isPlayingSound: StateFlow<Boolean> = SoundAndAlertManager.isPlayingSound
     val activeSoundLabel: StateFlow<String?> = SoundAndAlertManager.activeSoundLabel
 
@@ -63,10 +71,21 @@ class GeoAlertViewModel(
 
     init {
         SoundAndAlertManager.ensureNotificationChannels(application)
-        viewModelScope.launch {
-            repository.ensureDefaultZoneIfEmpty()
-            GeofenceManager.sync(application)
-        }
+        viewModelScope.launch { GeofenceManager.sync(application) }
+    }
+
+    /** Switches between the battery-saving (geofencing) and the precise (GPS service) mode. */
+    fun setLocationMode(mode: LocationMode) {
+        if (mode == _locationMode.value) return
+        AppPreferences.setLocationMode(getApplication<Application>(), mode)
+        _locationMode.value = mode
+        resyncGeofences()
+    }
+
+    /** [done] = true means the first-run guide is not shown again on the next launch. */
+    fun setOnboardingDone(done: Boolean) {
+        AppPreferences.setOnboardingDone(getApplication<Application>(), done)
+        _onboardingDone.value = done
     }
 
     /**
@@ -154,7 +173,8 @@ class GeoAlertViewModel(
         }
 
         val now = System.currentTimeMillis()
-        val allEnabled = repository.getAllZonesOnce().filter { it.isEnabled }
+        val allZones = repository.getAllZonesOnce()
+        val allEnabled = allZones.filter { it.isEnabled }
         val inTimeWindowCount = allEnabled.count { it.isWithinTimeWindow(now) }
 
         LocationEvaluator.evaluateSampledLocation(
@@ -169,7 +189,8 @@ class GeoAlertViewModel(
         )
 
         val statusText = when {
-            allEnabled.isEmpty() -> "אין אזורים פעילים להגדרה"
+            allZones.isEmpty() -> "עדיין לא הוגדר אזור לניטור"
+            allEnabled.isEmpty() -> "כל האזורים מושבתים"
             inTimeWindowCount == 0 -> "ממתין לטווח הזמנים המוגדר (${allEnabled.size} אזורים)"
             gotRealGps -> "נדגם מיקום GPS בזמן אמת ($inTimeWindowCount אזורים בטווח השעות)"
             else -> "נדגם מיקום נוכחי ($inTimeWindowCount אזורים בטווח השעות)"

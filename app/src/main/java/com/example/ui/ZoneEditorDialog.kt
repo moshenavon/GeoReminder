@@ -487,6 +487,11 @@ fun ZoneEditorDialog(
                         text = "תדירות דגימת מיקום בזמן החלון הפעיל:",
                         style = MaterialTheme.typography.labelLarge
                     )
+                    Text(
+                        text = "משמשת במצב \"מדויק (GPS)\" ובתצוגת הרדאר החי. במצב \"חסכוני בסוללה\" ההתראות ברקע מגיעות ממערכת המיקום של גוגל (אפשר לבחור את המצב בלשונית הגדרות).",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)

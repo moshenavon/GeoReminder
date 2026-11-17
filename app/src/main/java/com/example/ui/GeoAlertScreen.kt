@@ -45,11 +45,13 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Radar
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -75,6 +77,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,6 +96,7 @@ import com.example.util.LocationUtils
 import com.example.data.GeoEventLogEntity
 import com.example.data.GeoZoneEntity
 import com.example.data.RingtonePreset
+import com.example.ui.theme.LocalRadarAccents
 import com.example.ui.theme.RadarAmber
 import com.example.ui.theme.RadarCoral
 import com.example.ui.theme.RadarCyan
@@ -111,8 +115,12 @@ fun GeoAlertScreen(viewModel: GeoAlertViewModel) {
     val radarState by viewModel.radarState.collectAsStateWithLifecycle()
     val isPlayingSound by viewModel.isPlayingSound.collectAsStateWithLifecycle()
     val activeSoundLabel by viewModel.activeSoundLabel.collectAsStateWithLifecycle()
+    val locationMode by viewModel.locationMode.collectAsStateWithLifecycle()
+    val onboardingDone by viewModel.onboardingDone.collectAsStateWithLifecycle()
 
-    var currentTab by remember { mutableIntStateOf(0) }
+    // The first-run guide is shown on every launch until the user ticks "don't show again".
+    var showGuide by rememberSaveable { mutableStateOf(!onboardingDone) }
+    var currentTab by rememberSaveable { mutableIntStateOf(0) }
     var selectedZoneId by remember { mutableLongStateOf(0L) }
     var editingZone by remember { mutableStateOf<GeoZoneEntity?>(null) }
     var isEditorOpen by remember { mutableStateOf(false) }
@@ -188,6 +196,20 @@ fun GeoAlertScreen(viewModel: GeoAlertViewModel) {
     val activeZone = zones.find { it.id == selectedZoneId } ?: zones.firstOrNull()
 
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+        if (showGuide) {
+            OnboardingScreen(
+                locationMode = locationMode,
+                onLocationModeChange = { viewModel.setLocationMode(it) },
+                initialDontShowAgain = onboardingDone,
+                onFinish = { dontShowAgain ->
+                    viewModel.setOnboardingDone(dontShowAgain)
+                    showGuide = false
+                },
+                onSkip = { showGuide = false }
+            )
+            return@CompositionLocalProvider
+        }
+
         Scaffold(
             contentWindowInsets = WindowInsets.safeDrawing,
             topBar = {
@@ -223,14 +245,14 @@ fun GeoAlertScreen(viewModel: GeoAlertViewModel) {
                 )
             },
             floatingActionButton = {
-                if (currentTab == 0 || currentTab == 1) {
+                if ((currentTab == 0 || currentTab == 1) && zones.isNotEmpty()) {
                     ExtendedFloatingActionButton(
                         onClick = {
                             editingZone = null
                             isEditorOpen = true
                         },
                         containerColor = RadarCyan,
-                        contentColor = Color(0xFF00242A),
+                        contentColor = LocalRadarAccents.current.onCyan,
                         modifier = Modifier.testTag("add_zone_fab")
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "הוספת אזור חדש")
@@ -250,7 +272,7 @@ fun GeoAlertScreen(viewModel: GeoAlertViewModel) {
                                 contentDescription = "רדאר וניטור"
                             )
                         },
-                        label = { Text("רדאר וניטור") },
+                        label = { Text("רדאר") },
                         modifier = Modifier.testTag("nav_tab_radar")
                     )
                     NavigationBarItem(
@@ -262,7 +284,7 @@ fun GeoAlertScreen(viewModel: GeoAlertViewModel) {
                                 contentDescription = "אזורי התראה"
                             )
                         },
-                        label = { Text("אזורי התראה (${zones.size})") },
+                        label = { Text("אזורים (${zones.size})") },
                         modifier = Modifier.testTag("nav_tab_zones")
                     )
                     NavigationBarItem(
@@ -276,6 +298,18 @@ fun GeoAlertScreen(viewModel: GeoAlertViewModel) {
                         },
                         label = { Text("יומן (${eventLogs.size})") },
                         modifier = Modifier.testTag("nav_tab_history")
+                    )
+                    NavigationBarItem(
+                        selected = currentTab == 3,
+                        onClick = { currentTab = 3 },
+                        icon = {
+                            Icon(
+                                imageVector = if (currentTab == 3) Icons.Filled.Settings else Icons.Outlined.Settings,
+                                contentDescription = "הגדרות"
+                            )
+                        },
+                        label = { Text("הגדרות") },
+                        modifier = Modifier.testTag("nav_tab_settings")
                     )
                 }
             }
@@ -354,6 +388,17 @@ fun GeoAlertScreen(viewModel: GeoAlertViewModel) {
                                 }
                             }
 
+                            if (zones.isEmpty()) {
+                                item {
+                                    EmptyZonesCard(
+                                        onCreateZone = {
+                                            editingZone = null
+                                            isEditorOpen = true
+                                        }
+                                    )
+                                }
+                            }
+
                             if (zones.size > 1) {
                                 item {
                                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -415,12 +460,14 @@ fun GeoAlertScreen(viewModel: GeoAlertViewModel) {
                                 }
                             }
 
-                            item {
-                                Text(
-                                    text = "סיכום אזורי רדיוס וזמני דגימה",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            if (zones.isNotEmpty()) {
+                                item {
+                                    Text(
+                                        text = "סיכום אזורי רדיוס וזמני דגימה",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
 
                             items(zones, key = { it.id }) { zone ->
@@ -473,6 +520,17 @@ fun GeoAlertScreen(viewModel: GeoAlertViewModel) {
                                 )
                             }
 
+                            if (zones.isEmpty()) {
+                                item {
+                                    EmptyZonesCard(
+                                        onCreateZone = {
+                                            editingZone = null
+                                            isEditorOpen = true
+                                        }
+                                    )
+                                }
+                            }
+
                             items(zones, key = { it.id }) { zone ->
                                 ZoneDetailCard(
                                     zone = zone,
@@ -509,6 +567,14 @@ fun GeoAlertScreen(viewModel: GeoAlertViewModel) {
                             onClearHistory = { viewModel.clearEventHistory() }
                         )
                     }
+
+                    3 -> {
+                        SettingsScreen(
+                            locationMode = locationMode,
+                            onLocationModeChange = { viewModel.setLocationMode(it) },
+                            onShowGuide = { showGuide = true }
+                        )
+                    }
                 }
             }
         }
@@ -531,6 +597,51 @@ fun GeoAlertScreen(viewModel: GeoAlertViewModel) {
                     viewModel.resolveRingtoneTitle(uri)
                 }
             )
+        }
+    }
+}
+
+@Composable
+private fun EmptyZonesCard(onCreateZone: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("empty_zones_card"),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, RadarCyan.copy(alpha = 0.35f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.LocationOn,
+                contentDescription = null,
+                tint = RadarCyan,
+                modifier = Modifier.size(48.dp)
+            )
+            Text(
+                text = "עדיין לא הוגדר שום אזור לניטור",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "צור אזור כדי לקבל התראה בכניסה אליו וביציאה ממנו.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Button(
+                onClick = onCreateZone,
+                modifier = Modifier.testTag("empty_create_zone_button")
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("צור אזור חדש", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }

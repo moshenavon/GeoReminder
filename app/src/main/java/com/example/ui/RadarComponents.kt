@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -69,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.GeoZoneEntity
 import com.example.data.ZoneOccupancyState
+import com.example.ui.theme.LocalRadarAccents
 import com.example.ui.theme.RadarAmber
 import com.example.ui.theme.RadarCoral
 import com.example.ui.theme.RadarCyan
@@ -100,28 +102,20 @@ fun HeroStatusBanner(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
+        val accents = LocalRadarAccents.current
         Box(modifier = Modifier.fillMaxWidth()) {
+            // matchParentSize: the background follows the content height, so there is no
+            // empty strip below the last row.
             Image(
                 painter = painterResource(id = R.drawable.img_radar_hero_1794737610243),
                 contentDescription = "רקע רדאר",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(215.dp)
+                modifier = Modifier.matchParentSize()
             )
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(215.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xCC07111E),
-                                Color(0xE60B192C),
-                                Color(0xF80E1E32)
-                            )
-                        )
-                    )
+                    .matchParentSize()
+                    .background(Brush.verticalGradient(colors = accents.heroScrim))
             )
 
             Column(
@@ -149,12 +143,12 @@ fun HeroStatusBanner(
                             Text(
                                 text = if (radarState.isMonitoringActive) "ניטור מיקום פעיל" else "ניטור מיקום מושהה",
                                 style = MaterialTheme.typography.titleLarge,
-                                color = Color.White
+                                color = accents.heroTitle
                             )
                             Text(
                                 text = radarState.statusMessageHe,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFFB8E2F2)
+                                color = accents.heroSubtitle
                             )
                         }
                     }
@@ -190,7 +184,7 @@ fun HeroStatusBanner(
                         Text(
                             text = "דגימה אחרונה: $sampleTimeStr • הבאה בעוד ${radarState.secondsToNextSample} שנ׳",
                             style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFFBFD4E8)
+                            color = accents.heroMeta
                         )
                     }
 
@@ -442,7 +436,11 @@ fun InteractiveRadarVisualizerCard(
                     .padding(4.dp),
                 contentAlignment = Alignment.Center
             ) {
-                val primaryRingColor = if (isInside) RadarEmerald else RadarCyan
+                val cyan = RadarCyan
+                val emerald = RadarEmerald
+                val coral = RadarCoral
+                val discColor = LocalRadarAccents.current.radarDisc
+                val primaryRingColor = if (isInside) emerald else cyan
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val center = Offset(size.width / 2f, size.height / 2f)
                     val maxCanvasRadius = size.minDimension / 2f - 8.dp.toPx()
@@ -450,7 +448,7 @@ fun InteractiveRadarVisualizerCard(
 
                     // Outer dark radar disc
                     drawCircle(
-                        color = Color(0xFF071324),
+                        color = discColor,
                         radius = maxCanvasRadius,
                         center = center
                     )
@@ -458,7 +456,7 @@ fun InteractiveRadarVisualizerCard(
                     // Concentric range rings
                     for (fraction in listOf(0.32f, 0.65f, 1.0f)) {
                         drawCircle(
-                            color = RadarCyan.copy(alpha = 0.22f),
+                            color = cyan.copy(alpha = 0.22f),
                             radius = maxCanvasRadius * fraction,
                             center = center,
                             style = Stroke(width = 1.5.dp.toPx())
@@ -467,13 +465,13 @@ fun InteractiveRadarVisualizerCard(
 
                     // Crosshair lines
                     drawLine(
-                        color = RadarCyan.copy(alpha = 0.18f),
+                        color = cyan.copy(alpha = 0.18f),
                         start = Offset(center.x - maxCanvasRadius, center.y),
                         end = Offset(center.x + maxCanvasRadius, center.y),
                         strokeWidth = 1.dp.toPx()
                     )
                     drawLine(
-                        color = RadarCyan.copy(alpha = 0.18f),
+                        color = cyan.copy(alpha = 0.18f),
                         start = Offset(center.x, center.y - maxCanvasRadius),
                         end = Offset(center.x, center.y + maxCanvasRadius),
                         strokeWidth = 1.dp.toPx()
@@ -516,7 +514,7 @@ fun InteractiveRadarVisualizerCard(
 
                     // Zone Center Pin
                     drawCircle(
-                        color = RadarCyan,
+                        color = cyan,
                         radius = 6.dp.toPx(),
                         center = center
                     )
@@ -531,7 +529,7 @@ fun InteractiveRadarVisualizerCard(
                         y = center.y - (dotDistancePx * sin(angleRad)).toFloat()
                     )
 
-                    val dotColor = if (isInside) RadarEmerald else RadarCoral
+                    val dotColor = if (isInside) emerald else coral
                     drawCircle(
                         color = dotColor.copy(alpha = 0.35f),
                         radius = 13.dp.toPx(),
@@ -656,7 +654,7 @@ fun InteractiveRadarVisualizerCard(
                             onClick = onSimulateEntry,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = RadarEmerald,
-                                contentColor = Color(0xFF002912)
+                                contentColor = LocalRadarAccents.current.onEmerald
                             ),
                             modifier = Modifier
                                 .weight(1f)

@@ -14,7 +14,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MyApplicationTheme(darkTheme = true) {
+            MyApplicationTheme() {
                 val geoViewModel: GeoAlertViewModel = viewModel(
                     factory = GeoAlertViewModel.Factory(application)
                 )

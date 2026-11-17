@@ -44,14 +44,15 @@ object LocationUtils {
         hasFineLocationPermission(context) && hasBackgroundLocationPermission(context)
 
     /**
-     * One-shot location fetch. Falls back to the last known location if no fresh fix
-     * arrives within [timeoutMillis].
+     * One-shot location fetch. Falls back to the last known location (when [allowLastKnown])
+     * if no fresh fix arrives within [timeoutMillis].
      */
     @SuppressLint("MissingPermission")
     suspend fun fetchCurrentLocation(
         context: Context,
         priority: Int = Priority.PRIORITY_HIGH_ACCURACY,
-        timeoutMillis: Long = 20_000L
+        timeoutMillis: Long = 20_000L,
+        allowLastKnown: Boolean = true
     ): Pair<Double, Double>? {
         if (!hasLocationPermission(context)) return null
         val client = LocationServices.getFusedLocationProviderClient(context.applicationContext)
@@ -63,7 +64,7 @@ object LocationUtils {
                 .build()
             val tokenSource = CancellationTokenSource()
             val fresh = client.getCurrentLocation(request, tokenSource.token).awaitOrNull()
-            val location = fresh ?: client.lastLocation.awaitOrNull()
+            val location = fresh ?: if (allowLastKnown) client.lastLocation.awaitOrNull() else null
             location?.let { it.latitude to it.longitude }
         } catch (_: Exception) {
             null

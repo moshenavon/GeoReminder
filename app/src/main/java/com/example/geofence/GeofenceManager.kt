@@ -6,9 +6,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.example.data.AppPreferences
 import com.example.data.GeoAlertDatabase
 import com.example.data.GeoAlertRepository
 import com.example.data.GeoZoneEntity
+import com.example.data.LocationMode
 import com.example.util.LocationUtils
 import com.example.util.awaitSuccess
 import com.google.android.gms.location.Geofence
@@ -59,9 +61,11 @@ object GeofenceManager {
     }
 
     /**
-     * Re-registers all geofences from the database. Call after any zone change, after
-     * permissions change, on boot, and when location providers are toggled.
-     * Returns true if geofences are now active.
+     * Applies the current monitoring setup. In [LocationMode.BATTERY_SAVER] it re-registers
+     * all geofences from the database; in [LocationMode.PRECISE] it removes them and starts
+     * the GPS sampling service instead. Call after any zone change, after permissions or the
+     * location mode change, on boot, and when location providers are toggled.
+     * Returns true if monitoring is now active.
      */
     @SuppressLint("MissingPermission")
     suspend fun sync(context: Context): Boolean {
@@ -77,9 +81,21 @@ object GeofenceManager {
 
         if (!isMonitoringEnabled(app) || zones.isEmpty()) {
             cancelWindowStartCheck(app)
+            LocationSamplingService.stop(app)
             return false
         }
 
+        if (AppPreferences.getLocationMode(app) == LocationMode.PRECISE) {
+            // The sampling service evaluates the time windows itself.
+            cancelWindowStartCheck(app)
+            if (!LocationUtils.hasLocationPermission(app)) {
+                LocationSamplingService.stop(app)
+                return false
+            }
+            return LocationSamplingService.start(app)
+        }
+
+        LocationSamplingService.stop(app)
         scheduleNextWindowStartCheck(app, zones)
 
         if (!LocationUtils.canUseGeofencing(app)) return false
