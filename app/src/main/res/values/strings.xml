@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">GeoAlert</string>
+    <string name="app_subtitle">ניטור רדיוס מיקום והתראות לפי שעות</string>
+    <string name="tab_radar">רדאר וניטור</string>
+    <string name="tab_zones">אזורי התראה</string>
+    <string name="tab_history">יומן אירועים</string>
+    <string name="sampling_active">דגימת מיקום פעילה</string>
+    <string name="sampling_paused">דגימת מיקום מושהית</string>
+    <string name="add_zone">הוספת אזור חדש</string>
+    <string name="edit_zone">עריכת אזור</string>
+    <string name="entry_alert_title">נכנסת לרדיוס המוגדר!</string>
+    <string name="exit_alert_title">יצאת מהרדיוס המוגדר!</string>
+    <string name="stop_sound">השתק צלצול</string>
+    <string name="grant_permissions">אשר הרשאות מיקום והתראות</string>
+    <string name="use_current_location">קבע לפי המיקום הנוכחי שלי</string>
+    <string name="pick_system_ringtone">בחר צלצול מהמכשיר</string>
+    <string name="test_entry_sound">נגן צלצול כניסה</string>
+    <string name="test_exit_sound">נגן צלצול יציאה</string>
+    <string name="clear_history">נקה יומן</string>
+</resources>

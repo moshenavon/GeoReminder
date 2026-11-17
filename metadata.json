@@ -1,0 +1,10 @@
+{
+  "name": "GeoAlert",
+  "description": "אפליקציית ניטור רדיוס מיקום חכמה לפי טווחי זמנים עם התראות כניסה ויציאה וצלילים מותאמים אישית",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
